@@ -101,7 +101,9 @@ function simpleHash(str){let h=0;for(let i=0;i<str.length;i++){h=((h<<5)-h)+str.
 // ===== DATA =====
 const admin={username:'admin',passwordHash:simpleHash('admin')};
 let players=JSON.parse(localStorage.getItem('players'))||[
- {id:1,username:'player',passwordHash:simpleHash('123'),name:'Hyundra Player',xp:0,level:1,photo:'https://i.pravatar.cc/150?img=12'}
+ {id:1,username:'player',passwordHash:simpleHash('123'),name:'pearl',xp:0,level:1,photo:'https://i.pravatar.cc/150?img=12'}
+];
+ {id:1,username:'prada',passwordHash:simpleHash('1234'),name:'prada',xp:0,level:1,photo:'https://i.pravatar.cc/150?img=12'}
 ];
 let currentPlayer=null;
 
