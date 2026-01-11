@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>REMNANTS TRADEHOUSE</title>
+  <style>
+    body {font-family:Arial; background:linear-gradient(135deg,#667eea,#764ba2); margin:0}
+    .container{max-width:600px;margin:40px auto;background:#fff;padding:20px;border-radius:15px;box-shadow:0 10px 25px rgba(0,0,0,.2)}
+    h2,h3{text-align:center}
+    input,button,select{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid #ccc}
+    button{background:#667eea;color:#fff;font-weight:bold;border:none;cursor:pointer}
+    button:hover{background:#5a67d8}
+    .danger{background:#dc2626}
+    .danger:hover{background:#b91c1c}
+    .logout{background:#ef4444}
+    .hidden{display:none}
+    .profile{text-align:center}
+    .profile img{width:100px;height:100px;border-radius:50%;object-fit:cover}
+    .progress{background:#e5e7eb;height:18px;border-radius:10px;overflow:hidden}
+    .progress-bar{height:100%;background:#22c55e;width:0%;transition:.4s}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{border:1px solid #ddd;padding:6px;text-align:center;font-size:13px}
+    th{background:#f3f4f6}
+    .small{font-size:13px;color:#555;text-align:center}
+    .row-btn{display:flex;gap:4px}
+    .row-btn button{padding:6px;font-size:12px}
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="container" id="loginPanel">
+  <h2>REMNANTS TRADEHOUSE</h2>
+  <h3 style="text-align:center;margin-top:-10px">Login</h3>
+  <select id="role">
+    <option value="player">Player</option>
+    <option value="admin">Admin</option>
+  </select>
+  <input id="username" placeholder="Username">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <p class="small">Silakan login menggunakan akun Anda</p>
+</div>
+
+<!-- PLAYER PANEL -->
+<div class="container hidden" id="playerPanel">
+  <h2>REMNANTS TRADEHOUSE</h2>
+  <h3 style="text-align:center;margin-top:-10px">Dashboard Player</h3>
+  <div class="profile">
+    <img id="pPhoto">
+    <input type="file" accept="image/*" onchange="changePhoto(event)">
+    <h3 id="pName"></h3>
+    <p>Level <b id="pLevel"></b></p>
+    <p><span id="pXP"></span> / <span id="pXPMax"></span> XP</p>
+    <div class="progress"><div class="progress-bar" id="pBar"></div></div>
+  </div>
+
+  <h3>🏆 Leaderboard</h3>
+  <table id="leaderboard">
+    <thead><tr><th>#</th><th>Nama</th><th>Level</th><th>XP</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <button class="logout" onclick="logout()">Logout</button>
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="container hidden" id="adminPanel">
+  <h2>REMNANTS TRADEHOUSE</h2>
+  <h3 style="text-align:center;margin-top:-10px">Panel Admin</h3>
+
+  <h3>➕ Tambah Player</h3>
+  <input id="newName" placeholder="Nama Player">
+  <input id="newUsername" placeholder="Username Login">
+  <input id="newPassword" type="password" placeholder="Password Login">
+  <button onclick="addPlayer()">Tambah Player</button>
+
+  <hr>
+
+  <input placeholder="Cari player..." onkeyup="searchPlayer(this.value)">
+  <table id="playerTable">
+    <thead>
+      <tr>
+        <th>Nama</th>
+        <th>Level</th>
+        <th>XP</th>
+        <th>XP</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <button class="logout" onclick="logout()">Logout</button>
+</div>
+
+<script>
+// ===== HASH FUNCTION =====
+function simpleHash(str){let h=0;for(let i=0;i<str.length;i++){h=((h<<5)-h)+str.charCodeAt(i);h|=0;}return h.toString();}
+
+// ===== DATA =====
+const admin={username:'admin',passwordHash:simpleHash('admin')};
+let players=JSON.parse(localStorage.getItem('players'))||[
+ {id:1,username:'player',passwordHash:simpleHash('123'),name:'Hyundra Player',xp:0,level:1,photo:'https://i.pravatar.cc/150?img=12'}
+];
+let currentPlayer=null;
+
+const MAX_LEVEL=100;
+function xpNeed(l){return l*100;}
+
+// ===== LOGIN =====
+function login(){
+ const r=role.value,u=username.value.trim(),p=password.value;
+ if(!u||!p) return alert('Lengkapi data');
+ if(r==='admin'){
+  if(u===admin.username && simpleHash(p)===admin.passwordHash) showAdmin();
+  else alert('Login admin gagal');
+ }else{
+  const pl=players.find(x=>x.username===u && simpleHash(p)===x.passwordHash);
+  if(pl){currentPlayer=pl;showPlayer();}
+  else alert('Login player gagal');
+ }
+}
+
+// ===== PLAYER =====
+function showPlayer(){loginPanel.classList.add('hidden');playerPanel.classList.remove('hidden');updatePlayerUI();renderLeaderboard();}
+
+function updatePlayerUI(){
+ const p=currentPlayer;
+ pPhoto.src=p.photo;pName.innerText=p.name;pLevel.innerText=p.level;pXP.innerText=p.xp;
+ const max=xpNeed(p.level);pXPMax.innerText=max;pBar.style.width=Math.min(100,(p.xp/max)*100)+'%';
+}
+
+function changePhoto(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{currentPlayer.photo=r.result;save();updatePlayerUI();renderLeaderboard();};r.readAsDataURL(f);}
+
+function renderLeaderboard(){
+ const lb=[...players].sort((a,b)=>b.level-a.level||b.xp-a.xp);
+ const tb=document.querySelector('#leaderboard tbody');tb.innerHTML='';
+ lb.forEach((p,i)=>tb.innerHTML+=`<tr><td>${i+1}</td><td>${p.name}</td><td>${p.level}</td><td>${p.xp}</td></tr>`);
+}
+
+// ===== ADMIN =====
+function showAdmin(){loginPanel.classList.add('hidden');adminPanel.classList.remove('hidden');renderAdmin(players);}
+
+function renderAdmin(list){
+ const tb=document.querySelector('#playerTable tbody');tb.innerHTML='';
+ list.forEach(p=>{
+  tb.innerHTML+=`<tr>
+   <td><input value="${p.name}" onchange="updateName(${p.id},this.value)"></td>
+   <td>${p.level}</td>
+   <td>${p.xp}</td>
+   <td><input type="number" placeholder="+ / -" onchange="addXP(${p.id},this.value)"></td>
+   <td class="row-btn">
+     <button onclick="resetPassword(${p.id})">Reset PW</button>
+     <button class="danger" onclick="deletePlayer(${p.id})">Hapus</button>
+   </td>
+  </tr>`;
+ });
+}
+
+function addPlayer(){
+  if(!newName.value||!newUsername.value||!newPassword.value)
+    return alert('Lengkapi data player');
+
+  if(players.some(p=>p.username===newUsername.value))
+    return alert('Username sudah digunakan');
+
+  const player = {
+    id: Date.now(),
+    username: newUsername.value,
+    passwordHash: simpleHash(newPassword.value),
+    name: newName.value,
+    xp: 0,
+    level: 1,
+    photo: 'https://i.pravatar.cc/150'
+  };
+
+  players.push(player);
+  save();
+  renderAdmin(players);
+
+  alert(`Player berhasil ditambahkan!\n\nLogin Player:\nUsername: ${player.username}\nPassword: (sesuai yang dibuat admin)`);
+
+  newName.value='';
+  newUsername.value='';
+  newPassword.value='';
+}
+
+function updateName(id,val){const p=players.find(x=>x.id===id);p.name=val;save();renderLeaderboard();}
+
+function resetPassword(id){
+ const np=prompt('Password baru:');if(!np) return;
+ const p=players.find(x=>x.id===id);p.passwordHash=simpleHash(np);save();alert('Password diubah');
+}
+
+function deletePlayer(id){
+ if(!confirm('Yakin ingin menghapus player ini?')) return;
+ players=players.filter(p=>p.id!==id);
+ save();renderAdmin(players);renderLeaderboard();
+}
+
+function addXP(id,val){
+ const p=players.find(x=>x.id===id);val=parseInt(val);if(isNaN(val))return;
+ p.xp+=val;
+ while(p.xp>=xpNeed(p.level)&&p.level<MAX_LEVEL){p.xp-=xpNeed(p.level);p.level++;}
+ while(p.xp<0&&p.level>1){p.level--;p.xp+=xpNeed(p.level);} 
+ if(p.level>MAX_LEVEL)p.level=MAX_LEVEL;if(p.xp<0)p.xp=0;
+ save();renderAdmin(players);renderLeaderboard();
+}
+
+function searchPlayer(k){k=k.toLowerCase();renderAdmin(players.filter(p=>p.name.toLowerCase().includes(k)));}
+function save(){localStorage.setItem('players',JSON.stringify(players));}
+function logout(){location.reload();}
+</script>
+</body>
+</html>
